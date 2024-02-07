@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+</head>
+<body>
+    <h1>Dashboard</h1>
+    <div>
+        <form action="{% url 'firstApi:change-version' %}" method="get">
+            <button type="submit">Changer la version</button>
+        </form>
+        <form action="{% url 'firstApi:project-version' %}" method="get">
+            <button type="submit">Afficher la version</button>
+        </form>
+        <form action="{% url 'firstApi:user-list' %}" method="get">
+            <button type="submit">Afficher le nombre d'utilisateurs</button>
+        </form>
+    </div>
+</body>
+</html>

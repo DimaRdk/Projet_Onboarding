@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Changer la Version</title>
+</head>
+<body>
+    <h1>Changer la Version du Projet</h1>
+    <form method="post">
+       
+        {{ form.as_p }}
+        <button type="submit">Mettre à jour la version</button>
+    </form>
+    <a href="{% url 'firstApi:dashboard' %}">Retour au tableau de bord</a>
+</body>
+</html>
