@@ -37,7 +37,7 @@ class ProjectVersionAPIView(APIView):
             return Response({'error': 'Project version not found'}, status=status.HTTP_404_NOT_FOUND)
         
         with OpenAIAssistant(VersionRequette,model) as assistant:
-            resp = assistant.process(version=version.version, lang="fr")
+            resp = assistant.process(version=version.version, lang="en")
         version_verbose = resp.version_verbose
         serializer = ProjectVersionSerializer(version, context={'version_verbose': version_verbose})
         return Response(serializer.data)
@@ -51,8 +51,9 @@ class UserListAPIView(APIView):
 
         query="Write me a short, professional sentence to present number of users | I need you to answear me in the context language"
         context = {"user_count": user_count,
-                   "language": "fr"}
+                   "language": "en"}
         user_count_verbose = analyst.ask(query, context)
+
         # with OpenAIAssistant(UserCountRequette, model) as assistant:
         #     resp = assistant.process(user_count=user_count, lang="fr")
         # user_count_verbose = resp.user_count_verbose
