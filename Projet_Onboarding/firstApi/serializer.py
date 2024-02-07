@@ -9,7 +9,8 @@ class ProjectVersionSerializer(serializers.ModelSerializer):
         model = ProjectVersion
         fields = ['version']
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email'] 
+class UserCountSerializer(serializers.Serializer):
+    users = serializers.SerializerMethodField()
+
+    def get_users(self, obj):
+        return {"count": obj['userCount']}
