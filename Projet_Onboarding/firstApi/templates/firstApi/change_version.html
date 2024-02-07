@@ -7,7 +7,7 @@
 <body>
     <h1>Changer la Version du Projet</h1>
     <form method="post">
-       
+        {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Mettre à jour la version</button>
     </form>
