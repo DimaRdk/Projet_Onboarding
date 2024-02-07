@@ -11,8 +11,24 @@ from rest_framework.reverse import reverse
 from rest_framework.parsers import JSONParser
 import requests
 from django.contrib.auth.models import User
-from llm_core.assistants import LLaMACPPAssistant
+from llm_core.assistants import OpenAIAssistant , Analyst
+from dataclasses import dataclass
 
+model = "gpt-3.5-turbo-0613"
+assistant = OpenAIAssistant
+analyst = Analyst(model, assistant)
+
+@dataclass
+class VersionRequette:
+    system_prompt  = "You are a system helper"
+    prompt = "Write me a short, professional sentence to present the project version | I need you to answear me in {lang} |  the actual version is {version}"
+    version_verbose: str
+
+@dataclass 
+class UserCountRequette:
+    system_prompt  = "You are a system helper"
+    prompt = "Write me a short, professional sentence to present number of users | I need you to answear me in {lang} |  the actual number of users is {user_count} "
+    user_count_verbose: str
 
 class ProjectVersionAPIView(APIView):
     def get(self, request):
@@ -20,18 +36,20 @@ class ProjectVersionAPIView(APIView):
         if version is None:
             return Response({'error': 'Project version not found'}, status=status.HTTP_404_NOT_FOUND)
         
-
-        phrase = "La version actuelle est très importante."
-        serializer = ProjectVersionSerializer(version, context={'version_verbose': phrase})
+        with OpenAIAssistant(VersionRequette,model) as assistant:
+            resp = assistant.process(version=version.version, lang="fr")
+        version_verbose = resp.version_verbose
+        serializer = ProjectVersionSerializer(version, context={'version_verbose': version_verbose})
         return Response(serializer.data)
     
 class UserListAPIView(APIView):
     def get(self, request):
         user_count = User.objects.count()
         
-        user_count_verbose = "phrase bateau"
-        
-        
+        with OpenAIAssistant(UserCountRequette, model) as assistant:
+            resp = assistant.process(user_count=user_count, lang="fr")
+        user_count_verbose = resp.user_count_verbose
+
         serializer = UserCountSerializer({
             'userCount': user_count,
             'user_count_verbose': user_count_verbose 
