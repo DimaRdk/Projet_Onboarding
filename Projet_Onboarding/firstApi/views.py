@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 model = "gpt-3.5-turbo-0613"
 assistant = OpenAIAssistant
-analyst = Analyst(model, assistant)
+
 
 @dataclass
 class VersionRequette:
@@ -46,13 +46,20 @@ class UserListAPIView(APIView):
     def get(self, request):
         user_count = User.objects.count()
         
-        with OpenAIAssistant(UserCountRequette, model) as assistant:
-            resp = assistant.process(user_count=user_count, lang="fr")
-        user_count_verbose = resp.user_count_verbose
+
+        analyst = Analyst(model , assistant)
+
+        query="Write me a short, professional sentence to present number of users | I need you to answear me in the context language"
+        context = {"user_count": user_count,
+                   "language": "fr"}
+        user_count_verbose = analyst.ask(query, context)
+        # with OpenAIAssistant(UserCountRequette, model) as assistant:
+        #     resp = assistant.process(user_count=user_count, lang="fr")
+        # user_count_verbose = resp.user_count_verbose
 
         serializer = UserCountSerializer({
             'userCount': user_count,
-            'user_count_verbose': user_count_verbose 
+            'user_count_verbose': user_count_verbose.content
         })
         return Response(serializer.data)
 
