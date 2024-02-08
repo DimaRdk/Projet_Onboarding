@@ -24,11 +24,15 @@ class VersionRequette:
     prompt = "Write me a short, professional sentence to present the project version | I need you to answear me in {lang} |  the actual version is {version}"
     version_verbose: str
 
+
+
 @dataclass 
 class UserCountRequette:
     system_prompt  = "You are a system helper"
     prompt = "Write me a short, professional sentence to present number of users | I need you to answear me in {lang} |  the actual number of users is {user_count} "
     user_count_verbose: str
+
+
 
 class ProjectVersionAPIView(APIView):
     def get(self, request):
