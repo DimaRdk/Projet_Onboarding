@@ -8,11 +8,17 @@ from django.shortcuts import render
 from .forms import ProjectVersionForm
 from django.shortcuts import redirect
 from rest_framework.reverse import reverse
-from rest_framework.parsers import JSONParser
 import requests
 from django.contrib.auth.models import User
 from llm_core.assistants import OpenAIAssistant , Analyst
 from dataclasses import dataclass
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from .permissions import IsUserAllowedToAccessUsers, IsUserAllowedToAccessVersion
+from rest_framework.authtoken.models import Token
+
 
 model = "gpt-3.5-turbo-0613"
 assistant = OpenAIAssistant
@@ -35,6 +41,8 @@ class UserCountRequette:
 
 
 class ProjectVersionAPIView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsUserAllowedToAccessVersion]
     def get(self, request):
         version = ProjectVersion.objects.last()  
         if version is None:
@@ -47,6 +55,8 @@ class ProjectVersionAPIView(APIView):
         return Response(serializer.data)
     
 class UserListAPIView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsUserAllowedToAccessUsers]
     def get(self, request):
         user_count = User.objects.count()
         
@@ -67,37 +77,46 @@ class UserListAPIView(APIView):
             'user_count_verbose': user_count_verbose.content
         })
         return Response(serializer.data)
+    
 
 def project_version_view(request):
-    api_url = reverse('firstApi:project-version',request = request)
-    response = requests.get(api_url)
+    api_url = reverse('firstApi:project-version', request=request)
+    token = Token.objects.get(user=request.user).key
+    headers = {'Authorization': f'Token {token}'}
+    response = requests.get(api_url, headers=headers)
     if response.status_code == 200:
         version_data = response.json()
         version = version_data.get('version_verbose', 'Inconnue')
     else:
-        version = 'Erreur lors de la récupération de la version'
+        version = "You have not access to this data"
 
     return render(request, 'firstApi/display_version.html', {'version': version})
 
-
 def project_user_view(request):
-    api_url = reverse('firstApi:user-list',request = request)
-    response = requests.get(api_url)
+    api_url = reverse('firstApi:user-list', request=request)
+    token = Token.objects.get(user=request.user).key
+    
+    headers = {'Authorization': f'Token {token}'}
+    response = requests.get(api_url, headers=headers)
+    print(response.status_code)
     if response.status_code == 200:
         count_data = response.json()
         count = count_data.get('user_count_verbose', 'Inconnue')
     else:
-        count = 'Erreur lors de la récupération du nombre d\'utilisateurs' 
+        count = f"You have not access to this data "
 
     return render(request, 'firstApi/display_count.html', {'count': count})
 
 
 
+
 def change_version_view(request):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("You have not access to this form")
+
     if request.method == 'POST':
         form = ProjectVersionForm(request.POST)
         if form.is_valid():
-            
             version_instance, created = ProjectVersion.objects.update_or_create(
                 id=1, 
                 defaults={'version': form.cleaned_data['version']},
@@ -111,7 +130,6 @@ def change_version_view(request):
             form = ProjectVersionForm(instance=current_version)
 
     return render(request, 'firstApi/change_version.html', {'form': form})
-
 
 def dashboard_view(request):
     return render(request, 'firstApi/dashboard.html')
