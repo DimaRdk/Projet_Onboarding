@@ -1,24 +1,24 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
-from .models import ProjectVersion
-from .serializer import UserCountSerializer, ProjectVersionSerializer
+from .models import ProjectVersion , Event
+from .serializer import UserCountSerializer, ProjectVersionSerializer, EventSerializer
 from rest_framework import status
 from django.shortcuts import render
-from .forms import ProjectVersionForm
+from .forms import ProjectVersionForm , EventForm
 from django.shortcuts import redirect
 from rest_framework.reverse import reverse
 import requests
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User 
 from llm_core.assistants import OpenAIAssistant , Analyst
 from dataclasses import dataclass
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
-from .permissions import IsUserAllowedToAccessUsers, IsUserAllowedToAccessVersion
+from .permissions import IsUserAllowedToAccessUsers, IsUserAllowedToAccessVersion,IsUserAllowedToGetEvents , IsUserAllowedToPostEvent
 from rest_framework.authtoken.models import Token
-
+import json
 
 model = "gpt-3.5-turbo-0613"
 assistant = OpenAIAssistant
@@ -38,6 +38,47 @@ class UserCountRequette:
     prompt = "Write me a short, professional sentence to present number of users | I need you to answear me in {lang} |  the actual number of users is {user_count} "
     user_count_verbose: str
 
+
+class EventView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsUserAllowedToPostEvent]
+    def post(self, request):
+       
+        serializer = EventSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EventListAPIView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsUserAllowedToGetEvents]
+    def get(self, request, format=None):
+        data = json.loads(request.body)
+        request_type = data.get('request')
+        user = data.get('user')
+        date = data.get('date')
+        event = data.get('event')
+        action_type  = data.get('action_type')
+
+        queryset = Event.objects.all()
+
+        if request_type == 'all':
+            pass
+        elif request_type == 'user':
+            queryset = queryset.filter(user=user)
+        elif request_type == 'date':
+            queryset = queryset.filter(created__date=date)
+        elif request_type == 'event':
+            queryset = queryset.filter(event=event)
+        elif request_type == 'action_type':
+            queryset = queryset.filter(action_type=action_type)
+        else:
+            return Response({'error': 'Invalid request type'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = EventSerializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class ProjectVersionAPIView(APIView):
@@ -130,6 +171,25 @@ def change_version_view(request):
             form = ProjectVersionForm(instance=current_version)
 
     return render(request, 'firstApi/change_version.html', {'form': form})
+
+
+
+def create_event(request):
+        if not request.user.is_superuser:
+            return HttpResponseForbidden("You have not access to this form")
+        if request.method == 'POST':
+            form = EventForm(request.POST)
+            if form.is_valid():
+                event = form.save(commit=False)
+                event.user = request.user
+                event.save()
+                return redirect('firstApi:dashboard')
+        else:
+            form = EventForm()
+        return render(request, 'firstApi/create_event.html', {'form': form})
+
+       
+
 
 def dashboard_view(request):
     return render(request, 'firstApi/dashboard.html')
